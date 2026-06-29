@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#001a2e" />
+  <meta name="description" content="Remake moderno de SeaQuest (Atari) — jogo HTML5 em Canvas." />
+  <title>SeaQuest — Remake Moderno</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23001a2e'/%3E%3Cellipse cx='16' cy='16' rx='10' ry='4' fill='%23ffd166'/%3E%3Ccircle cx='6' cy='16' r='2' fill='%23ffd166'/%3E%3C/svg%3E" />
+</head>
+<body>
+  <!-- ======== GAME CONTAINER ======== -->
+  <div id="game-root" class="game-root">
+    <!-- Canvas principal -->
+    <canvas id="game-canvas" aria-label="SeaQuest Game Canvas"></canvas>
+
+    <!-- ======== HUD ======== -->
+    <div id="hud" class="hud" data-state="menu" hidden>
+      <div class="hud-top">
+        <div class="hud-cell">
+          <div class="hud-label">SCORE</div>
+          <div class="hud-value" id="hud-score">0</div>
+        </div>
+        <div class="hud-cell">
+          <div class="hud-label">FASE</div>
+          <div class="hud-value" id="hud-phase">1</div>
+        </div>
+        <div class="hud-cell">
+          <div class="hud-label">VIDAS</div>
+          <div class="hud-value" id="hud-lives">3</div>
+        </div>
+        <div class="hud-cell hud-cell-wide">
+          <div class="hud-label">OXIGÊNIO</div>
+          <div class="bar"><div class="bar-fill" id="hud-oxygen"></div></div>
+        </div>
+        <div class="hud-cell">
+          <div class="hud-label">RESGATES</div>
+          <div class="hud-value" id="hud-rescued">0</div>
+        </div>
+        <button id="btn-pause" class="btn-icon" aria-label="Pausar">⏸</button>
+      </div>
+      <div class="hud-dev" id="hud-fps">FPS: --</div>
+    </div>
+
+    <!-- ======== MOBILE CONTROLS ======== -->
+    <div id="mobile-controls" class="mobile-controls" hidden>
+      <div class="joystick" id="joystick">
+        <div class="joystick-base">
+          <div class="joystick-stick" id="joystick-stick"></div>
+        </div>
+      </div>
+      <button id="btn-fire" class="btn-fire" aria-label="Disparar">●</button>
+    </div>
+
+    <!-- ======== OVERLAY SCREENS ======== -->
+    <div id="overlay" class="overlay">
+      <!-- Menu principal -->
+      <section class="screen" id="screen-menu">
+        <h1 class="title">
+          <span class="title-main">SEAQUEST</span>
+          <span class="title-sub">REMAKE MODERNO</span>
+        </h1>
+        <div class="menu-buttons">
+          <button class="btn btn-primary" data-action="start">▶ JOGAR</button>
+          <button class="btn" data-action="tutorial">? TUTORIAL</button>
+          <button class="btn" data-action="settings">⚙ CONFIGURAÇÕES</button>
+          <button class="btn" data-action="credits">★ CRÉDITOS</button>
+        </div>
+        <div class="hint">Use as setas/WASD para mover • ESPAÇO para disparar</div>
+      </section>
+
+      <!-- Seleção de fase -->
+      <section class="screen hidden" id="screen-phases">
+        <h2 class="screen-title">SELECIONE A FASE</h2>
+        <div class="phase-grid" id="phase-grid"></div>
+        <button class="btn" data-action="back">← VOLTAR</button>
+      </section>
+
+      <!-- Tutorial -->
+      <section class="screen hidden" id="screen-tutorial">
+        <h2 class="screen-title">COMO JOGAR</h2>
+        <div class="tutorial-grid">
+          <div class="tutorial-item"><div class="tutorial-icon">🎮</div><div>Setas / WASD movem o submarino</div></div>
+          <div class="tutorial-item"><div class="tutorial-icon">🚀</div><div>ESPAÇO dispara torpedos</div></div>
+          <div class="tutorial-item"><div class="tutorial-icon">🫧</div><div>Suba à superfície para reabastecer O₂</div></div>
+          <div class="tutorial-item"><div class="tutorial-icon">🤿</div><div>Resgate mergulhadores para ganhar pontos</div></div>
+          <div class="tutorial-item"><div class="tutorial-icon">🦈</div><div>Desvie dos inimigos e destrua-os</div></div>
+          <div class="tutorial-item"><div class="tutorial-icon">👑</div><div>Derrote o chefão no final da fase</div></div>
+        </div>
+        <button class="btn btn-primary" data-action="start">ENTENDI</button>
+      </section>
+
+      <!-- Pausa -->
+      <section class="screen hidden" id="screen-pause">
+        <h2 class="screen-title">PAUSADO</h2>
+        <div class="menu-buttons">
+          <button class="btn btn-primary" data-action="resume">▶ CONTINUAR</button>
+          <button class="btn" data-action="restart-phase">↻ REINICIAR FASE</button>
+          <button class="btn" data-action="restart">⏮ REINICIAR JOGO</button>
+          <button class="btn" data-action="settings">⚙ CONFIGURAÇÕES</button>
+          <button class="btn" data-action="exit">✕ SAIR</button>
+        </div>
+      </section>
+
+      <!-- Game Over -->
+      <section class="screen hidden" id="screen-gameover">
+        <h2 class="screen-title danger">GAME OVER</h2>
+        <div class="result-stats">
+          <div>Pontuação: <strong id="go-score">0</strong></div>
+          <div>Fase alcançada: <strong id="go-phase">1</strong></div>
+          <div>Resgates: <strong id="go-rescued">0</strong></div>
+        </div>
+        <div class="menu-buttons">
+          <button class="btn btn-primary" data-action="restart">↻ TENTAR NOVAMENTE</button>
+          <button class="btn" data-action="menu">⌂ MENU</button>
+        </div>
+      </section>
+
+      <!-- Vitória -->
+      <section class="screen hidden" id="screen-victory">
+        <h2 class="screen-title success">VITÓRIA!</h2>
+        <div class="result-stats">
+          <div>Você salvou os mares! 🌊</div>
+          <div>Pontuação final: <strong id="vic-score">0</strong></div>
+          <div>Total de resgates: <strong id="vic-rescued">0</strong></div>
+        </div>
+        <div class="menu-buttons">
+          <button class="btn btn-primary" data-action="restart">↻ JOGAR NOVAMENTE</button>
+          <button class="btn" data-action="credits">★ CRÉDITOS</button>
+        </div>
+      </section>
+
+      <!-- Configurações -->
+      <section class="screen hidden" id="screen-settings">
+        <h2 class="screen-title">CONFIGURAÇÕES</h2>
+        <div class="settings-list">
+          <label class="setting">
+            <span>Música</span>
+            <input type="range" id="set-music" min="0" max="100" value="60" />
+          </label>
+          <label class="setting">
+            <span>Efeitos</span>
+            <input type="range" id="set-sfx" min="0" max="100" value="80" />
+          </label>
+          <label class="setting">
+            <span>FPS Dev</span>
+            <input type="checkbox" id="set-fps" />
+          </label>
+          <label class="setting">
+            <span>Partículas</span>
+            <select id="set-particles">
+              <option value="high">Altas</option>
+              <option value="medium" selected>Médias</option>
+              <option value="low">Baixas</option>
+            </select>
+          </label>
+        </div>
+        <button class="btn btn-primary" data-action="back">OK</button>
+      </section>
+
+      <!-- Créditos -->
+      <section class="screen hidden" id="screen-credits">
+        <h2 class="screen-title">CRÉDITOS</h2>
+        <div class="credits-body">
+          <p><strong>SEAQUEST REMAKE</strong></p>
+          <p>Inspirado no clássico de 1983 (Atari 2600)</p>
+          <p>Design & Programação: Mavis Agent</p>
+          <p>Motor: HTML5 Canvas 2D + Web Audio API</p>
+          <p class="muted">Sistema modular vanilla JS — sem dependências externas</p>
+        </div>
+        <button class="btn btn-primary" data-action="menu">⌂ MENU</button>
+      </section>
+    </div>
+
+    <!-- Botão de fullscreen flutuante (canto) -->
+    <button id="btn-fullscreen" class="btn-fullscreen" aria-label="Tela cheia" hidden>⛶</button>
+  </div>
+
+  <!-- ======== MODULES ======== -->
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
